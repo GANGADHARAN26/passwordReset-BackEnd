@@ -9,7 +9,7 @@ const cloudDb=`mongodb+srv://${username}:${password}@${clusterName}/${dbname}?re
 const localDB='mongodb://localhost:27017/password-reset';
 const DbConnection=async()=>{
     try{
-        await mongoose.connect(localDB,{useNewUrlParser:true});
+        await mongoose.connect(cloudDb,{useNewUrlParser:true});
         console.log("DB connection established")
     }catch(error)
     {
@@ -17,4 +17,4 @@ const DbConnection=async()=>{
       process.exit(1)
     }
 }
-export default DbConnection;
+export default DbConnection; 

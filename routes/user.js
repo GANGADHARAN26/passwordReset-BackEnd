@@ -2,6 +2,9 @@ import express from 'express';
 import { AppUserModel } from '../db-utils/model.js';
 import {v4} from 'uuid';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { transport } from './mail.js';
+import {mailOptions} from  './mail.js';
 //router 
 const userRouter=express.Router();
 //register router
@@ -40,7 +43,9 @@ userRouter.post('/login',async function(req,res){
                 else{
                     const responseObject=user.toObject();
                     delete responseObject.password;
-                    res.send(responseObject);
+                    const accessToken=jwt.sign({email:responseObject.email},process.env.JWT_SECRET,{expiresIn:'1d'})
+                    
+                    res.send({...responseObject,accessToken});
                 }
             })
         }else{
@@ -51,4 +56,63 @@ userRouter.post('/login',async function(req,res){
         res.status(500).send({message:"error in login  with user details"});
     }
 })
-export default userRouter
+//forgotPassword
+userRouter.post('/forgotPassword',async(req,res)=>{
+    const email=req.body.email;
+    const emailIsThere=await AppUserModel.findOne({email: email});
+
+    try{ 
+        if(emailIsThere){
+            const token=jwt.sign({email:email},process.env.JWT_SECRET,{expiresIn:'1d'});
+            const link=`${process.env.FRONTEND_URL}/verify?token=${token}`
+            await AppUserModel.updateOne({email:email},{'$set':{token:token}})
+            await transport.sendMail({...mailOptions,to:email,text:`Please verify your e-mail address using these link ${link} `})
+            res.status(200).send({message:"email successfully"}) 
+            console.log("email successfully"+link)
+        }
+        else{
+            res.status(401).send({message:"invalid credentials"});
+        } 
+    }
+   catch(error){
+    console.log(error)
+    res.status(500).send({msg:"error occured in forgot "})
+   }  
+})
+//verifying token
+userRouter.post('/verify-token',async(req,res)=>{
+ 
+    try{ 
+        const token = req.body.token;
+        jwt.verify(token,process.env.JWT_SECRET,async(err,result)=>{
+           console.log(result,err)
+            await AppUserModel.updateOne({email:result.email},{'$set':{isVerified:true}})
+            res.send({msg:"user verifed"})
+        });
+       
+    }
+   catch{
+    res.status(500).send({msg:"verfication failed"}) 
+   }  
+})
+//updating password
+userRouter.post('/updatePassword',async (req,res)=>{
+    try{
+        const payload=req.body;
+        console.log(payload)
+        
+        
+            const decodedtoken=jwt.verify(payload.token,process.env.JWT_SECRET)
+        
+    
+           const hashedPassword=await bcrypt.hash(payload.password,10)
+           console.log(decodedtoken.email,hashedPassword,payload.password)
+            await AppUserModel.updateOne({email:decodedtoken.email},{'$set':{password:hashedPassword,token:'',isVerified:false}});
+            res.send({msg:"updated password"})
+       
+    
+    }catch{
+        res.status(500).send({msg:"passwords updation failed"})  
+    }
+})
+export default userRouter      

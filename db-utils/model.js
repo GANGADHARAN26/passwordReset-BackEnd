@@ -21,6 +21,12 @@ const userSchema=new mongoose.Schema({
         required:true,
         min:5,
         max:20
+    },isVerified:{
+        type:Boolean,
+        default:false,
+    },
+    token:{
+        type:String
     }
 })
 const AppUserModel=mongoose.model('AppUser',userSchema)

@@ -2,6 +2,7 @@ import cors from 'cors';
 import DbConnection from "./db-utils/mongoose-connection.js";
 import userRouter from "./routes/user.js";
 import express from 'express';
+
 const PORT=process.env.PORT||5050;
 const app=express();
 await DbConnection();
