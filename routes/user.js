@@ -66,7 +66,7 @@ userRouter.post('/forgotPassword',async(req,res)=>{
             const token=jwt.sign({email:email},process.env.JWT_SECRET,{expiresIn:'1d'});
             const link=`${process.env.FRONTEND_URL}/verify?token=${token}`
             await AppUserModel.updateOne({email:email},{'$set':{token:token}})
-            await transport.sendMail({...mailOptions,to:email,text:`Please verify your e-mail address using these link ${link} `})
+            await transport.sendMail({...mailOptions,to:email,subject:'Password update Verification link',text:`Please verify your e-mail address using these link ${link} `})
             res.status(200).send({message:"email successfully"}) 
             console.log("email successfully"+link)
         }
@@ -100,11 +100,7 @@ userRouter.post('/updatePassword',async (req,res)=>{
     try{
         const payload=req.body;
         console.log(payload)
-        
-        
             const decodedtoken=jwt.verify(payload.token,process.env.JWT_SECRET)
-        
-    
            const hashedPassword=await bcrypt.hash(payload.password,10)
            console.log(decodedtoken.email,hashedPassword,payload.password)
             await AppUserModel.updateOne({email:decodedtoken.email},{'$set':{password:hashedPassword,token:'',isVerified:false}});
